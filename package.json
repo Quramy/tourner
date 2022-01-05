@@ -1,0 +1,74 @@
+{
+  "name": "tourner",
+  "version": "1.0.0",
+  "description": "",
+  "main": "lib/index.js",
+  "scripts": {
+    "build": "tsc",
+    "test": "jest",
+    "test:ci": "jest --coverage",
+    "prettier": "prettier \"*.md\" \"*.json\" \"*.yml\" \"src/**/*\"",
+    "format": "yarn prettier --write",
+    "format:check": "yarn prettier --check",
+    "lint": "yarn format:check",
+    "postinstall": "husky install",
+    "prepublishOnly": "pinst --disable",
+    "postpublish": "pinst --enable"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Quramy/tourner.git"
+  },
+  "keywords": [
+    "typescript"
+  ],
+  "author": "Quramy",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Quramy/tourner/issues"
+  },
+  "homepage": "https://github.com/Quramy/tourner#readme",
+  "peerDependencies": {
+    "typescript": "^3.0.0 || ^4.0.0"
+  },
+  "dependencies": {
+    "@phenomnomnominal/tsquery": "4.1.1",
+    "talt": "^2.2.3"
+  },
+  "devDependencies": {
+    "@types/jest": "27.0.2",
+    "husky": "7.0.4",
+    "jest": "27.3.1",
+    "pinst": "2.1.6",
+    "prettier": "2.4.1",
+    "pretty-quick": "3.1.1",
+    "rimraf": "3.0.2",
+    "ts-jest": "27.0.7",
+    "typescript": "4.4.4"
+  },
+  "jest": {
+    "globals": {
+      "ts-jest": {
+        "diagnostics": false
+      }
+    },
+    "transform": {
+      "^.+\\.ts$": "ts-jest"
+    },
+    "testRegex": "(src/.*\\.test)\\.ts$",
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "\\.d\\.ts$",
+      "lib/.*"
+    ],
+    "collectCoverageFrom": [
+      "src/**/*.ts",
+      "!**/testing/**"
+    ],
+    "moduleFileExtensions": [
+      "js",
+      "ts",
+      "json"
+    ]
+  }
+}
