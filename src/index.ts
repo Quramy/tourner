@@ -39,7 +39,7 @@ export class SourceFileDocument implements SourceDocument {
 
   select<TNode extends Node = Node>(queryStr: string): RootArraySelectionResult<TNode> {
     const result = tsquery.query(this._sourceFile, queryStr);
-    return new TsRootArrayQueryResultWrapper(result as TNode[], this);
+    return new DefaultRootArraySelectionResult(result as TNode[], this);
   }
 
   get text() {
@@ -87,7 +87,7 @@ export class SourceFileDocument implements SourceDocument {
   }
 }
 
-class TsArrayQueryResultWrapper<TNode extends Node> implements ArraySelectionResult<TNode> {
+class DefaultArraySelectionResult<TNode extends Node> implements ArraySelectionResult<TNode> {
   public readonly _holder: SourceFileDocument;
   protected readonly _raw: TNode[];
 
@@ -109,7 +109,7 @@ class TsArrayQueryResultWrapper<TNode extends Node> implements ArraySelectionRes
       // TODO Specify error
       throw new Error("");
     }
-    return new TsSingleQueryResultWrapper(this._raw[0], this._holder);
+    return new DefaultSingleSelectionResult(this._raw[0], this._holder);
   }
 
   get last(): SingleSelectionResult<TNode> {
@@ -117,7 +117,7 @@ class TsArrayQueryResultWrapper<TNode extends Node> implements ArraySelectionRes
       // TODO Specify error
       throw new Error("");
     }
-    return new TsRootSingleQueryResultWrapper(this._raw[this._raw.length - 1], this._holder);
+    return new DefaultRootSingleSelectionResult(this._raw[this._raw.length - 1], this._holder);
   }
 
   get unique(): SingleSelectionResult<TNode> {
@@ -125,11 +125,11 @@ class TsArrayQueryResultWrapper<TNode extends Node> implements ArraySelectionRes
       // TODO Specify error
       throw new Error("");
     }
-    return new TsRootSingleQueryResultWrapper(this._raw[0], this._holder);
+    return new DefaultRootSingleSelectionResult(this._raw[0], this._holder);
   }
 
   filter(cb: (context: BaseSelectionCallbackContext<TNode>) => boolean): ArraySelectionResult<TNode> {
-    return new TsArrayQueryResultWrapper(
+    return new DefaultArraySelectionResult(
       this._createContexts()
         .filter(cb)
         .map(({ node }) => node),
@@ -142,7 +142,7 @@ class TsArrayQueryResultWrapper<TNode extends Node> implements ArraySelectionRes
   }
 
   parent<SNode extends Node = Node>(): ArraySelectionResult<SNode> {
-    return new TsArrayQueryResultWrapper<SNode>(
+    return new DefaultArraySelectionResult<SNode>(
       this._raw.map(node => node.parent as SNode),
       this._holder,
     );
@@ -185,12 +185,12 @@ class TsArrayQueryResultWrapper<TNode extends Node> implements ArraySelectionRes
   }
 }
 
-class TsRootArrayQueryResultWrapper<TNode extends Node>
-  extends TsArrayQueryResultWrapper<TNode>
+class DefaultRootArraySelectionResult<TNode extends Node>
+  extends DefaultArraySelectionResult<TNode>
   implements RootArraySelectionResult<TNode>
 {
-  static promoteFrom<TNode extends Node = Node>(x: TsArrayQueryResultWrapper<TNode>) {
-    return new TsRootArrayQueryResultWrapper(x.rawResults, x._holder);
+  static promoteFrom<TNode extends Node = Node>(x: DefaultArraySelectionResult<TNode>) {
+    return new DefaultRootArraySelectionResult(x.rawResults, x._holder);
   }
 
   constructor(raw: TNode[], holder: SourceFileDocument) {
@@ -202,23 +202,23 @@ class TsRootArrayQueryResultWrapper<TNode extends Node>
   }
 
   get first(): RootSingleSelectionResult<TNode> {
-    return TsRootSingleQueryResultWrapper.promoteFrom(super.first as TsSingleQueryResultWrapper<TNode>);
+    return DefaultRootSingleSelectionResult.promoteFrom(super.first as DefaultSingleSelectionResult<TNode>);
   }
 
   get last(): RootSingleSelectionResult<TNode> {
-    return TsRootSingleQueryResultWrapper.promoteFrom(super.last as TsSingleQueryResultWrapper<TNode>);
+    return DefaultRootSingleSelectionResult.promoteFrom(super.last as DefaultSingleSelectionResult<TNode>);
   }
 
   get unique(): RootSingleSelectionResult<TNode> {
-    return TsRootSingleQueryResultWrapper.promoteFrom(super.unique as TsSingleQueryResultWrapper<TNode>);
+    return DefaultRootSingleSelectionResult.promoteFrom(super.unique as DefaultSingleSelectionResult<TNode>);
   }
 
-  filter(cb: (context: BaseSelectionCallbackContext<TNode>) => boolean): TsRootArrayQueryResultWrapper<TNode> {
-    return TsRootArrayQueryResultWrapper.promoteFrom(super.filter(cb) as TsArrayQueryResultWrapper<TNode>);
+  filter(cb: (context: BaseSelectionCallbackContext<TNode>) => boolean): DefaultRootArraySelectionResult<TNode> {
+    return DefaultRootArraySelectionResult.promoteFrom(super.filter(cb) as DefaultArraySelectionResult<TNode>);
   }
 
   parent<SNode extends Node = Node>(): RootArraySelectionResult<SNode> {
-    return TsRootArrayQueryResultWrapper.promoteFrom(super.parent() as TsArrayQueryResultWrapper<SNode>);
+    return DefaultRootArraySelectionResult.promoteFrom(super.parent() as DefaultArraySelectionResult<SNode>);
   }
 
   replace(cb: (context: ReplacementCallbackContext<TNode>) => ReplacementResult) {
@@ -239,7 +239,7 @@ class TsRootArrayQueryResultWrapper<TNode extends Node>
   }
 }
 
-class TsSingleQueryResultWrapper<TNode extends Node> implements SingleSelectionResult<TNode> {
+class DefaultSingleSelectionResult<TNode extends Node> implements SingleSelectionResult<TNode> {
   public readonly _holder: SourceFileDocument;
   protected readonly _raw: TNode;
 
@@ -280,7 +280,7 @@ class TsSingleQueryResultWrapper<TNode extends Node> implements SingleSelectionR
   }
 
   parent<SNode extends Node = Node>(): SingleSelectionResult<SNode> {
-    return new TsRootSingleQueryResultWrapper<SNode>(this._raw.parent as SNode, this._holder);
+    return new DefaultRootSingleSelectionResult<SNode>(this._raw.parent as SNode, this._holder);
   }
 
   get rawResults() {
@@ -303,12 +303,12 @@ class TsSingleQueryResultWrapper<TNode extends Node> implements SingleSelectionR
   }
 }
 
-class TsRootSingleQueryResultWrapper<TNode extends Node>
-  extends TsSingleQueryResultWrapper<TNode>
+class DefaultRootSingleSelectionResult<TNode extends Node>
+  extends DefaultSingleSelectionResult<TNode>
   implements RootSingleSelectionResult<TNode>
 {
-  static promoteFrom<TNode extends Node = Node>(x: TsSingleQueryResultWrapper<TNode>) {
-    return new TsRootSingleQueryResultWrapper(x.rawResults, x._holder);
+  static promoteFrom<TNode extends Node = Node>(x: DefaultSingleSelectionResult<TNode>) {
+    return new DefaultRootSingleSelectionResult(x.rawResults, x._holder);
   }
 
   constructor(raw: TNode, holder: SourceFileDocument) {
@@ -320,7 +320,7 @@ class TsRootSingleQueryResultWrapper<TNode extends Node>
   }
 
   parent<SNode extends Node = Node>(): RootSingleSelectionResult<SNode> {
-    return TsRootSingleQueryResultWrapper.promoteFrom(super.parent() as TsSingleQueryResultWrapper<SNode>);
+    return DefaultRootSingleSelectionResult.promoteFrom(super.parent() as DefaultSingleSelectionResult<SNode>);
   }
 
   replace(cb: (context: ReplacementCallbackContext<TNode>) => string) {
