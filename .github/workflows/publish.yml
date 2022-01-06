@@ -20,8 +20,8 @@ jobs:
         run: |
           echo "//registry.npmjs.org/:_authToken=${NPM_AUTH_TOKEN}" > ~/.npmrc
           npm whoami
-          yarn --frozen-lockfile
-          yarn build
+          npm ci
+          npm run build
           npm publish
         if: contains(github.ref, 'tags/v')
         env:
