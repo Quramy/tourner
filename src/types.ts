@@ -6,7 +6,15 @@ export interface SourceDocument {
   readonly text: string;
 }
 
-export type ReplacementResult = null | undefined | string | Node;
+export type MutationPayload = null | undefined | string | Node;
+
+export interface NodeEditor<TNode extends Node = Node> {
+  end(): SourceDocument;
+  remove(): this;
+  prepend(cb: (context: EditCallbackContext<TNode>) => MutationPayload): this;
+  append(cb: (context: EditCallbackContext<TNode>) => MutationPayload): this;
+  replace(cb: (context: EditCallbackContext<TNode>) => MutationPayload): this;
+}
 
 export interface BaseSelectionResult<TNode extends Node = Node> {
   forEach(cb: (context: BaseSelectionCallbackContext<TNode>) => void): this;
@@ -23,14 +31,9 @@ export interface ArraySelectionResult<TNode extends Node = Node> extends BaseSel
   readonly last: SingleSelectionResult<TNode>;
 }
 
-export interface Replacable<TNode extends Node = Node> {
-  end(): SourceDocument;
-  replace(cb: (context: ReplacementCallbackContext<TNode>) => ReplacementResult): this;
-}
-
 export interface RootArraySelectionResult<TNode extends Node = Node>
   extends ArraySelectionResult<TNode>,
-    Replacable<TNode> {
+    NodeEditor<TNode> {
   parent<SNode extends Node = Node>(): ArraySelectionResult<SNode>;
   filter(cb: (context: BaseSelectionCallbackContext<TNode>) => boolean): RootArraySelectionResult<TNode>;
   readonly unique: RootSingleSelectionResult<TNode>;
@@ -50,7 +53,7 @@ export interface SingleSelectionResult<TNode extends Node = Node> extends BaseSe
 
 export interface RootSingleSelectionResult<TNode extends Node = Node>
   extends SingleSelectionResult<TNode>,
-    Replacable<TNode> {
+    NodeEditor<TNode> {
   parent<SNode extends Node = Node>(): RootSingleSelectionResult<SNode>;
   filter(cb: (context: BaseSelectionCallbackContext<TNode>) => boolean): RootSingleSelectionResult<TNode>;
   readonly unique: RootSingleSelectionResult<TNode>;
@@ -64,4 +67,4 @@ export interface BaseSelectionCallbackContext<TNode extends Node = Node> {
   query<SNode extends Node = Node>(queryStr: string): ArraySelectionResult<SNode>;
 }
 
-export interface ReplacementCallbackContext<TNode extends Node = Node> extends BaseSelectionCallbackContext<TNode> {}
+export interface EditCallbackContext<TNode extends Node = Node> extends BaseSelectionCallbackContext<TNode> {}

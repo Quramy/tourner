@@ -1,13 +1,13 @@
 import { EmitHint, createPrinter, createSourceFile, SourceFile, Node } from "typescript";
 import {
+  SourceDocument,
   SingleSelectionResult,
   ArraySelectionResult,
   RootArraySelectionResult,
   RootSingleSelectionResult,
-  SourceDocument,
-  ReplacementCallbackContext,
   BaseSelectionCallbackContext,
-  ReplacementResult,
+  EditCallbackContext,
+  MutationPayload,
 } from "./types";
 import { tsquery } from "@phenomnomnominal/tsquery";
 import { template as taltTemplate } from "talt";
@@ -161,7 +161,7 @@ class DefaultArraySelectionResult<TNode extends Node> implements ArraySelectionR
     return this;
   }
 
-  replace(cb: (context: ReplacementCallbackContext<TNode>) => ReplacementResult) {
+  replace(cb: (context: EditCallbackContext<TNode>) => MutationPayload) {
     this._createContexts().forEach(ctx => {
       const replacementResult = cb(ctx);
       if (replacementResult == null) {
@@ -229,20 +229,23 @@ class DefaultRootArraySelectionResult<TNode extends Node>
     return DefaultRootArraySelectionResult.promoteFrom(super.parent() as DefaultArraySelectionResult<SNode>);
   }
 
-  replace(cb: (context: ReplacementCallbackContext<TNode>) => ReplacementResult) {
-    this._createContexts().forEach(ctx => {
-      const replacementResult = cb(ctx);
-      if (replacementResult == null) {
-        return;
-      }
-      const newText =
-        typeof replacementResult === "string" ? replacementResult : this._holder.printNode(replacementResult);
-      this._holder.pushChange({
-        pos: ctx.node.pos,
-        end: ctx.node.end,
-        newText,
-      });
-    });
+  remove() {
+    this._createContexts().forEach(mutationKindOf("remove", this));
+    return this;
+  }
+
+  prepend(cb: (context: EditCallbackContext<TNode>) => MutationPayload) {
+    this._createContexts().forEach(mutationKindOf("prepend", this, cb));
+    return this;
+  }
+
+  append(cb: (context: EditCallbackContext<TNode>) => MutationPayload) {
+    this._createContexts().forEach(mutationKindOf("append", this, cb));
+    return this;
+  }
+
+  replace(cb: (context: EditCallbackContext<TNode>) => MutationPayload) {
+    this._createContexts().forEach(mutationKindOf("replace", this, cb));
     return this;
   }
 }
@@ -339,19 +342,65 @@ class DefaultRootSingleSelectionResult<TNode extends Node>
     return DefaultRootSingleSelectionResult.promoteFrom(super.parent() as DefaultSingleSelectionResult<SNode>);
   }
 
-  replace(cb: (context: ReplacementCallbackContext<TNode>) => string) {
-    const ctx = this._createContext();
-    const replacementResult = cb(ctx);
-    if (replacementResult == null) {
-      return this;
-    }
-    const newText =
-      typeof replacementResult === "string" ? replacementResult : this._holder.printNode(replacementResult);
-    this._holder.pushChange({
-      pos: ctx.node.pos,
-      end: ctx.node.end,
-      newText,
-    });
+  remove() {
+    mutationKindOf("remove", this)(this._createContext());
     return this;
   }
+
+  prepend(cb: (context: EditCallbackContext<TNode>) => string) {
+    mutationKindOf("prepend", this, cb)(this._createContext());
+    return this;
+  }
+
+  append(cb: (context: EditCallbackContext<TNode>) => string) {
+    mutationKindOf("append", this, cb)(this._createContext());
+    return this;
+  }
+
+  replace(cb: (context: EditCallbackContext<TNode>) => string) {
+    mutationKindOf("replace", this, cb)(this._createContext());
+    return this;
+  }
+}
+
+function mutationKindOf<TNode extends Node = Node>(
+  type: "remove" | "prepend" | "append" | "replace",
+  { _holder }: { _holder: SourceFileDocument },
+  cb?: (context: EditCallbackContext<TNode>) => MutationPayload,
+) {
+  return (ctx: EditCallbackContext<TNode>) => {
+    const payload = cb?.(ctx);
+    if (type !== "remove" && payload == null) return;
+    const newText = payload == null ? "" : typeof payload === "string" ? payload : _holder.printNode(payload);
+    switch (type) {
+      case "remove":
+        _holder.pushChange({
+          pos: ctx.node.pos,
+          end: ctx.node.end,
+          newText: "",
+        });
+        return;
+      case "prepend":
+        _holder.pushChange({
+          pos: ctx.node.pos,
+          end: ctx.node.pos,
+          newText,
+        });
+        return;
+      case "append":
+        _holder.pushChange({
+          pos: ctx.node.end,
+          end: ctx.node.end,
+          newText,
+        });
+        return;
+      case "replace":
+        _holder.pushChange({
+          pos: ctx.node.pos,
+          end: ctx.node.end,
+          newText,
+        });
+        return;
+    }
+  };
 }
