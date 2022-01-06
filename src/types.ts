@@ -1,5 +1,13 @@
 import type { Node } from "typescript";
 
+export type ScriptContext = {
+  readonly sourceDocument: SourceDocument;
+};
+
+export interface ScriptFunction {
+  (context: ScriptContext): void;
+}
+
 export interface SourceDocument {
   query<TNode extends Node = Node>(queryStr: string): RootArraySelectionResult<TNode>;
   commit(): this;

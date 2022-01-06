@@ -33,10 +33,12 @@
   },
   "dependencies": {
     "@phenomnomnominal/tsquery": "4.1.1",
+    "picomatch": "^2.3.1",
     "talt": "^2.2.3"
   },
   "devDependencies": {
     "@types/jest": "27.0.2",
+    "@types/picomatch": "^2.3.0",
     "husky": "7.0.4",
     "jest": "27.3.1",
     "pinst": "2.1.6",

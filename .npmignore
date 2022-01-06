@@ -12,4 +12,5 @@ tsconfig.*
 .husky
 .prettierrc.yml
 .prettierignore
-lib/example
+examples/
+renovate.json

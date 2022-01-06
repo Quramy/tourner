@@ -17,9 +17,13 @@ type TextChange = {
   readonly newText: string;
 };
 
+type UpdateNotificationCallback = (fileName: string, text: string) => void;
+
 export class SourceFileDocument implements SourceDocument {
   private _sourceFile!: SourceFile;
   private _touched = false;
+
+  private _registeredCallbacks: UpdateNotificationCallback[] = [];
 
   private _uncommittedChanges: TextChange[];
 
@@ -37,6 +41,10 @@ export class SourceFileDocument implements SourceDocument {
     return new DefaultRootArraySelectionResult(result as TNode[], this);
   }
 
+  get fileName() {
+    return this._sourceFile.fileName;
+  }
+
   get text() {
     return this._sourceFile.text;
   }
@@ -47,6 +55,13 @@ export class SourceFileDocument implements SourceDocument {
 
   get touched() {
     return this._touched;
+  }
+
+  onUpdate(callback: UpdateNotificationCallback) {
+    this._registeredCallbacks.push(callback);
+    return () => {
+      this._registeredCallbacks = this._registeredCallbacks.filter(cb => cb !== callback);
+    };
   }
 
   commit() {
@@ -75,6 +90,7 @@ export class SourceFileDocument implements SourceDocument {
       lastChange = change;
     }
     this._uncommittedChanges = [];
+    this._registeredCallbacks.forEach(cb => cb(this._sourceFile.fileName, this._sourceFile.text));
     return this;
   }
 
