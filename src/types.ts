@@ -2,6 +2,8 @@ import type { Node, SourceFile } from "typescript";
 
 export interface SourceDocument {
   query<TNode extends Node = Node>(queryStr: string): ArrayQueryResultWrapper<TNode>;
+  commit(): SourceDocument;
+  readonly text: string;
 }
 
 // type ArrayResultHolder<TNode extends Node = Node> = {
@@ -16,9 +18,12 @@ export interface SourceDocument {
 //
 // type ResultHolder<TNode extends Node = Node> = ArrayResultHolder<TNode> | SingleResultHolder<TNode>;
 
+export type QueryReplacementResult = null | undefined | string | Node;
+
 export interface BaseQueryResultWrapper<TNode extends Node = Node> {
+  end(): SourceDocument;
   forEach(cb: (context: QueryForEachContext<TNode>) => void): this;
-  replace(cb: (context: QueryReplacementContext<TNode>) => string): SourceDocument;
+  replace(cb: (context: QueryReplacementContext<TNode>) => QueryReplacementResult): this;
   readonly length: number;
 }
 

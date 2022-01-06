@@ -1,15 +1,24 @@
-import { EmitHint, createPrinter, SourceFile, Node } from "typescript";
+import { EmitHint, createPrinter, createSourceFile, SourceFile, Node } from "typescript";
 import {
   SingleQueryResultWrapper,
   ArrayQueryResultWrapper,
   SourceDocument,
   QueryReplacementContext,
   QueryForEachContext,
+  QueryReplacementResult,
 } from "./types";
 import { tsquery } from "@phenomnomnominal/tsquery";
 
+type TextChange = {
+  readonly pos: number;
+  readonly end: number;
+  readonly newText: string;
+};
+
 export class SourceFileDocument implements SourceDocument {
   private _sourceFile!: SourceFile;
+
+  private _uncommittedChanges: TextChange[];
 
   static createFromSourceFile(sourceFile: SourceFile) {
     return new SourceFileDocument({ sourceFile });
@@ -17,11 +26,48 @@ export class SourceFileDocument implements SourceDocument {
 
   private constructor({ sourceFile }: { sourceFile: SourceFile }) {
     this._sourceFile = sourceFile;
+    this._uncommittedChanges = [];
   }
 
   query<TNode extends Node = Node>(queryStr: string): ArrayQueryResultWrapper<TNode> {
     const result = tsquery.query(this._sourceFile, queryStr);
     return new TsArrayQueryResultWrapper(result as TNode[], this);
+  }
+
+  get text() {
+    return this._sourceFile.text;
+  }
+
+  commit() {
+    const sorted = this._uncommittedChanges.slice().sort((a, b) => {
+      const endDiff = b.end - a.end;
+      if (endDiff !== 0) return endDiff;
+      const startDiff = b.pos - a.pos;
+      return startDiff;
+    });
+    let lastChange: TextChange | undefined = undefined;
+    for (const change of sorted) {
+      if (lastChange && change.pos >= lastChange.pos) {
+        continue;
+      }
+      const head = this._sourceFile.text.slice(0, change.pos);
+      const tail = this._sourceFile.text.slice(change.end);
+      const newText = head + change.newText + tail;
+      this._sourceFile = this._sourceFile.update(newText, {
+        span: {
+          start: change.pos,
+          length: change.end - change.pos,
+        },
+        newLength: change.newText.length,
+      });
+      lastChange = change;
+    }
+    this._uncommittedChanges = [];
+    return this;
+  }
+
+  pushChange(change: TextChange) {
+    this._uncommittedChanges.push(change);
   }
 
   printNode(node: Node) {
@@ -40,6 +86,10 @@ class TsArrayQueryResultWrapper<TNode extends Node> implements ArrayQueryResultW
   constructor(raw: TNode[], holder: SourceFileDocument) {
     this._raw = raw;
     this._holder = holder;
+  }
+
+  end() {
+    return this._holder;
   }
 
   get length() {
@@ -106,8 +156,22 @@ class TsArrayQueryResultWrapper<TNode extends Node> implements ArrayQueryResultW
     return this;
   }
 
-  replace(cb: (context: QueryReplacementContext<TNode>) => string) {
-    return this._holder;
+  replace(cb: (context: QueryReplacementContext<TNode>) => QueryReplacementResult) {
+    this._raw.forEach(node => {
+      const text = this._holder.printNode(node);
+      const replacementResult = cb({ node, text });
+      if (replacementResult == null) {
+        return;
+      }
+      const newText =
+        typeof replacementResult === "string" ? replacementResult : this._holder.printNode(replacementResult);
+      this._holder.pushChange({
+        pos: node.pos,
+        end: node.end,
+        newText,
+      });
+    });
+    return this;
   }
 }
 
@@ -119,6 +183,11 @@ class TsSingleQueryResultWrapper<TNode extends Node> implements SingleQueryResul
     this._raw = raw;
     this._holder = holder;
   }
+
+  end() {
+    return this._holder;
+  }
+
   get length() {
     return 1;
   }
@@ -168,6 +237,19 @@ class TsSingleQueryResultWrapper<TNode extends Node> implements SingleQueryResul
   }
 
   replace(cb: (context: QueryReplacementContext<TNode>) => string) {
-    return this._holder;
+    const node = this._raw;
+    const text = this._holder.printNode(node);
+    const replacementResult = cb({ node, text });
+    if (replacementResult == null) {
+      return this;
+    }
+    const newText =
+      typeof replacementResult === "string" ? replacementResult : this._holder.printNode(replacementResult);
+    this._holder.pushChange({
+      pos: node.pos,
+      end: node.end,
+      newText,
+    });
+    return this;
   }
 }
