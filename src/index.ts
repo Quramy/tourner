@@ -128,19 +128,15 @@ class TsArrayQueryResultWrapper<TNode extends Node> implements ArraySelectionRes
 
   filter(cb: (context: BaseSelectionCallbackContext<TNode>) => boolean): TsArrayQueryResultWrapper<TNode> {
     return new TsArrayQueryResultWrapper(
-      this._raw.filter(node => {
-        const text = this._holder.printNode(node);
-        return cb({ node, text });
-      }),
+      this._createContexts()
+        .filter(cb)
+        .map(({ node }) => node),
       this._holder,
     );
   }
 
   map<TResult>(cb: (context: BaseSelectionCallbackContext<TNode>) => TResult): TResult[] {
-    return this._raw.map(node => {
-      const text = this._holder.printNode(node);
-      return cb({ node, text });
-    });
+    return this._createContexts().map(cb);
   }
 
   parent<SNode extends Node = Node>(): ArraySelectionResult<SNode> {
@@ -155,29 +151,35 @@ class TsArrayQueryResultWrapper<TNode extends Node> implements ArraySelectionRes
   }
 
   forEach(cb: (context: BaseSelectionCallbackContext<TNode>) => void) {
-    this._raw.forEach(node => {
-      const text = this._holder.printNode(node);
-      cb({ node, text });
-    });
+    this._createContexts().forEach(cb);
     return this;
   }
 
   replace(cb: (context: ReplacementCallbackContext<TNode>) => ReplacementResult) {
-    this._raw.forEach(node => {
-      const text = this._holder.printNode(node);
-      const replacementResult = cb({ node, text });
+    this._createContexts().forEach(ctx => {
+      const replacementResult = cb(ctx);
       if (replacementResult == null) {
         return;
       }
       const newText =
         typeof replacementResult === "string" ? replacementResult : this._holder.printNode(replacementResult);
       this._holder.pushChange({
-        pos: node.pos,
-        end: node.end,
+        pos: ctx.node.pos,
+        end: ctx.node.end,
         newText,
       });
     });
     return this;
+  }
+
+  private _createContexts(): BaseSelectionCallbackContext<TNode>[] {
+    return this._raw.map(node => {
+      const text = this._holder.printNode(node);
+      return {
+        node,
+        text,
+      };
+    });
   }
 }
 
@@ -211,9 +213,8 @@ class TsSingleQueryResultWrapper<TNode extends Node> implements SingleSelectionR
   }
 
   filter(cb: (context: BaseSelectionCallbackContext<TNode>) => boolean): this {
-    const node = this._raw;
-    const text = this._holder.printNode(node);
-    const result = cb({ node, text });
+    const ctx = this._createContext();
+    const result = cb(ctx);
     if (!result) {
       // TODO Specify error
       throw new Error("");
@@ -222,9 +223,8 @@ class TsSingleQueryResultWrapper<TNode extends Node> implements SingleSelectionR
   }
 
   map<TResult>(cb: (context: BaseSelectionCallbackContext<TNode>) => TResult): TResult {
-    const node = this._raw;
-    const text = this._holder.printNode(node);
-    return cb({ node, text });
+    const ctx = this._createContext();
+    return cb(ctx);
   }
 
   parent<SNode extends Node = Node>(): SingleSelectionResult<SNode> {
@@ -236,26 +236,33 @@ class TsSingleQueryResultWrapper<TNode extends Node> implements SingleSelectionR
   }
 
   forEach(cb: (context: BaseSelectionCallbackContext<TNode>) => void) {
-    const node = this._raw;
-    const text = this._holder.printNode(node);
-    cb({ node, text });
+    const ctx = this._createContext();
+    cb(ctx);
     return this;
   }
 
   replace(cb: (context: ReplacementCallbackContext<TNode>) => string) {
-    const node = this._raw;
-    const text = this._holder.printNode(node);
-    const replacementResult = cb({ node, text });
+    const ctx = this._createContext();
+    const replacementResult = cb(ctx);
     if (replacementResult == null) {
       return this;
     }
     const newText =
       typeof replacementResult === "string" ? replacementResult : this._holder.printNode(replacementResult);
     this._holder.pushChange({
-      pos: node.pos,
-      end: node.end,
+      pos: ctx.node.pos,
+      end: ctx.node.end,
       newText,
     });
     return this;
+  }
+
+  private _createContext(): BaseSelectionCallbackContext<TNode> {
+    const node = this._raw;
+    const text = this._holder.printNode(node);
+    return {
+      node,
+      text,
+    };
   }
 }
