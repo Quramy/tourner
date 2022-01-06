@@ -1,4 +1,4 @@
-import type { Node, SourceFile } from "typescript";
+import type { Node } from "typescript";
 
 export interface SourceDocument {
   query<TNode extends Node = Node>(queryStr: string): RootArraySelectionResult<TNode>;

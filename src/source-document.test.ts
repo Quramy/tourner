@@ -1,5 +1,6 @@
 import ts from "typescript";
-import { SourceFileDocument, template } from ".";
+import { template } from ".";
+import { SourceFileDocument } from "./source-document";
 
 describe(SourceFileDocument, () => {
   describe(SourceFileDocument.prototype.commit, () => {
