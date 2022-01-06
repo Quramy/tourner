@@ -120,7 +120,7 @@ export function main() {
       });
     } else {
       touchedDocuments.forEach(doc => {
-        logger.info(prettyDiff(doc.fileName, scriptHost.readOriginalFile(doc.fileName)!, doc.text));
+        logger.info(prettyDiff(path.relative(pwd, doc.fileName), scriptHost.readOriginalFile(doc.fileName)!, doc.text));
       });
     }
   }
