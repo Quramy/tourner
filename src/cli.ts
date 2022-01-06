@@ -3,6 +3,7 @@ import ts from "typescript";
 
 import path from "path";
 import { isMatch } from "picomatch";
+import { createPatch } from "diff";
 
 import { registerTypeScript, getProcessedFileNames } from "./register-hook";
 import { ScriptHost } from "./script-host";
@@ -10,6 +11,7 @@ import { ScriptFunction } from "./types";
 import { SourceFileDocument } from "./source-document";
 import { createCliOptionParser } from "./cli-option-parser";
 import { ConsoleLogger } from "./logger";
+import { color } from "./string-util";
 
 function getTsCliOptions(pwd: string, tsconfigJsonFilePath?: string) {
   const result = ts.getParsedCommandLineOfConfigFile(
@@ -118,13 +120,24 @@ export function main() {
       });
     } else {
       touchedDocuments.forEach(doc => {
-        logger.info(`File "${doc.fileName}" will be updated:`);
-        logger.info("");
-        logger.info(doc.text);
-        // logger.info(scriptHost.readOriginalFile(doc.fileName)!);
+        logger.info(prettyDiff(doc.fileName, scriptHost.readOriginalFile(doc.fileName)!, doc.text));
       });
     }
   }
+}
+
+function prettyDiff(fileName: string, oldText: string, newText: string) {
+  const unifiedPatch = createPatch(fileName, oldText, newText);
+  return unifiedPatch
+    .split("\n")
+    .map(line => {
+      if (line.startsWith("---") || line.startsWith("+++")) return line;
+      if (line.startsWith("@@")) return color.cyan(line);
+      if (line.startsWith("+")) return color.green(line);
+      if (line.startsWith("-")) return color.red(line);
+      return line;
+    })
+    .join("\n");
 }
 
 main();
