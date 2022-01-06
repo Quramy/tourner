@@ -2,7 +2,9 @@ import type { Node, SourceFile } from "typescript";
 
 export interface SourceDocument {
   query<TNode extends Node = Node>(queryStr: string): RootArraySelectionResult<TNode>;
-  commit(): SourceDocument;
+  commit(): this;
+  readonly touched: boolean;
+  readonly dirty: boolean;
   readonly text: string;
 }
 

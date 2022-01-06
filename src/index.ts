@@ -25,6 +25,7 @@ type TextChange = {
 
 export class SourceFileDocument implements SourceDocument {
   private _sourceFile!: SourceFile;
+  private _touched = false;
 
   private _uncommittedChanges: TextChange[];
 
@@ -44,6 +45,14 @@ export class SourceFileDocument implements SourceDocument {
 
   get text() {
     return this._sourceFile.text;
+  }
+
+  get dirty() {
+    return this._uncommittedChanges.length > 0;
+  }
+
+  get touched() {
+    return this._touched;
   }
 
   commit() {
@@ -68,6 +77,7 @@ export class SourceFileDocument implements SourceDocument {
         },
         newLength: change.newText.length,
       });
+      this._touched = true;
       lastChange = change;
     }
     this._uncommittedChanges = [];
