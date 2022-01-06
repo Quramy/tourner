@@ -1,13 +1,19 @@
 import { EmitHint, createPrinter, createSourceFile, SourceFile, Node } from "typescript";
 import {
-  SingleQueryResultWrapper,
-  ArrayQueryResultWrapper,
+  SingleSelectionResult,
+  ArraySelectionResult,
   SourceDocument,
-  QueryReplacementContext,
-  QueryForEachContext,
-  QueryReplacementResult,
+  ReplacementCallbackContext,
+  BaseSelectionCallbackContext,
+  ReplacementResult,
 } from "./types";
 import { tsquery } from "@phenomnomnominal/tsquery";
+import { template as taltTemplate } from "talt";
+
+const { sourceFile, ...rest } = taltTemplate;
+export const template = {
+  ...rest,
+} as const;
 
 type TextChange = {
   readonly pos: number;
@@ -29,7 +35,7 @@ export class SourceFileDocument implements SourceDocument {
     this._uncommittedChanges = [];
   }
 
-  query<TNode extends Node = Node>(queryStr: string): ArrayQueryResultWrapper<TNode> {
+  select<TNode extends Node = Node>(queryStr: string): ArraySelectionResult<TNode> {
     const result = tsquery.query(this._sourceFile, queryStr);
     return new TsArrayQueryResultWrapper(result as TNode[], this);
   }
@@ -79,7 +85,7 @@ export class SourceFileDocument implements SourceDocument {
   }
 }
 
-class TsArrayQueryResultWrapper<TNode extends Node> implements ArrayQueryResultWrapper<TNode> {
+class TsArrayQueryResultWrapper<TNode extends Node> implements ArraySelectionResult<TNode> {
   private readonly _holder: SourceFileDocument;
   private readonly _raw: TNode[];
 
@@ -96,7 +102,7 @@ class TsArrayQueryResultWrapper<TNode extends Node> implements ArrayQueryResultW
     return this._raw.length;
   }
 
-  get first(): SingleQueryResultWrapper<TNode> {
+  get first(): SingleSelectionResult<TNode> {
     if (this._raw.length === 0) {
       // TODO Specify error
       throw new Error("");
@@ -104,7 +110,7 @@ class TsArrayQueryResultWrapper<TNode extends Node> implements ArrayQueryResultW
     return new TsSingleQueryResultWrapper(this._raw[0], this._holder);
   }
 
-  get last(): SingleQueryResultWrapper<TNode> {
+  get last(): SingleSelectionResult<TNode> {
     if (this._raw.length === 0) {
       // TODO Specify error
       throw new Error("");
@@ -112,7 +118,7 @@ class TsArrayQueryResultWrapper<TNode extends Node> implements ArrayQueryResultW
     return new TsSingleQueryResultWrapper(this._raw[this._raw.length - 1], this._holder);
   }
 
-  get unique(): SingleQueryResultWrapper<TNode> {
+  get unique(): SingleSelectionResult<TNode> {
     if (this._raw.length !== 1) {
       // TODO Specify error
       throw new Error("");
@@ -120,7 +126,7 @@ class TsArrayQueryResultWrapper<TNode extends Node> implements ArrayQueryResultW
     return new TsSingleQueryResultWrapper(this._raw[0], this._holder);
   }
 
-  filter(cb: (context: QueryForEachContext<TNode>) => boolean): TsArrayQueryResultWrapper<TNode> {
+  filter(cb: (context: BaseSelectionCallbackContext<TNode>) => boolean): TsArrayQueryResultWrapper<TNode> {
     return new TsArrayQueryResultWrapper(
       this._raw.filter(node => {
         const text = this._holder.printNode(node);
@@ -130,14 +136,14 @@ class TsArrayQueryResultWrapper<TNode extends Node> implements ArrayQueryResultW
     );
   }
 
-  map<TResult>(cb: (context: QueryForEachContext<TNode>) => TResult): TResult[] {
+  map<TResult>(cb: (context: BaseSelectionCallbackContext<TNode>) => TResult): TResult[] {
     return this._raw.map(node => {
       const text = this._holder.printNode(node);
       return cb({ node, text });
     });
   }
 
-  parent<SNode extends Node = Node>(): ArrayQueryResultWrapper<SNode> {
+  parent<SNode extends Node = Node>(): ArraySelectionResult<SNode> {
     return new TsArrayQueryResultWrapper<SNode>(
       this._raw.map(node => node.parent as SNode),
       this._holder,
@@ -148,7 +154,7 @@ class TsArrayQueryResultWrapper<TNode extends Node> implements ArrayQueryResultW
     return this._raw;
   }
 
-  forEach(cb: (context: QueryForEachContext<TNode>) => void) {
+  forEach(cb: (context: BaseSelectionCallbackContext<TNode>) => void) {
     this._raw.forEach(node => {
       const text = this._holder.printNode(node);
       cb({ node, text });
@@ -156,7 +162,7 @@ class TsArrayQueryResultWrapper<TNode extends Node> implements ArrayQueryResultW
     return this;
   }
 
-  replace(cb: (context: QueryReplacementContext<TNode>) => QueryReplacementResult) {
+  replace(cb: (context: ReplacementCallbackContext<TNode>) => ReplacementResult) {
     this._raw.forEach(node => {
       const text = this._holder.printNode(node);
       const replacementResult = cb({ node, text });
@@ -175,7 +181,7 @@ class TsArrayQueryResultWrapper<TNode extends Node> implements ArrayQueryResultW
   }
 }
 
-class TsSingleQueryResultWrapper<TNode extends Node> implements SingleQueryResultWrapper<TNode> {
+class TsSingleQueryResultWrapper<TNode extends Node> implements SingleSelectionResult<TNode> {
   private readonly _holder: SourceFileDocument;
   private readonly _raw: TNode;
 
@@ -192,19 +198,19 @@ class TsSingleQueryResultWrapper<TNode extends Node> implements SingleQueryResul
     return 1;
   }
 
-  get first(): SingleQueryResultWrapper<TNode> {
+  get first(): SingleSelectionResult<TNode> {
     return this;
   }
 
-  get last(): SingleQueryResultWrapper<TNode> {
+  get last(): SingleSelectionResult<TNode> {
     return this;
   }
 
-  get unique(): SingleQueryResultWrapper<TNode> {
+  get unique(): SingleSelectionResult<TNode> {
     return this;
   }
 
-  filter(cb: (context: QueryForEachContext<TNode>) => boolean): this {
+  filter(cb: (context: BaseSelectionCallbackContext<TNode>) => boolean): this {
     const node = this._raw;
     const text = this._holder.printNode(node);
     const result = cb({ node, text });
@@ -215,13 +221,13 @@ class TsSingleQueryResultWrapper<TNode extends Node> implements SingleQueryResul
     return this;
   }
 
-  map<TResult>(cb: (context: QueryForEachContext<TNode>) => TResult): TResult {
+  map<TResult>(cb: (context: BaseSelectionCallbackContext<TNode>) => TResult): TResult {
     const node = this._raw;
     const text = this._holder.printNode(node);
     return cb({ node, text });
   }
 
-  parent<SNode extends Node = Node>(): SingleQueryResultWrapper<SNode> {
+  parent<SNode extends Node = Node>(): SingleSelectionResult<SNode> {
     return new TsSingleQueryResultWrapper<SNode>(this._raw.parent as SNode, this._holder);
   }
 
@@ -229,14 +235,14 @@ class TsSingleQueryResultWrapper<TNode extends Node> implements SingleQueryResul
     return this._raw;
   }
 
-  forEach(cb: (context: QueryForEachContext<TNode>) => void) {
+  forEach(cb: (context: BaseSelectionCallbackContext<TNode>) => void) {
     const node = this._raw;
     const text = this._holder.printNode(node);
     cb({ node, text });
     return this;
   }
 
-  replace(cb: (context: QueryReplacementContext<TNode>) => string) {
+  replace(cb: (context: ReplacementCallbackContext<TNode>) => string) {
     const node = this._raw;
     const text = this._holder.printNode(node);
     const replacementResult = cb({ node, text });
