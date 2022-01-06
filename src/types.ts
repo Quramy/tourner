@@ -1,7 +1,7 @@
 import type { Node, SourceFile } from "typescript";
 
 export interface SourceDocument {
-  select<TNode extends Node = Node>(queryStr: string): RootArraySelectionResult<TNode>;
+  query<TNode extends Node = Node>(queryStr: string): RootArraySelectionResult<TNode>;
   commit(): SourceDocument;
   readonly text: string;
 }
@@ -14,6 +14,7 @@ export interface BaseSelectionResult<TNode extends Node = Node> {
 }
 
 export interface ArraySelectionResult<TNode extends Node = Node> extends BaseSelectionResult<TNode> {
+  readonly node: TNode[];
   map<TResult>(cb: (context: BaseSelectionCallbackContext<TNode>) => TResult): TResult[];
   parent<SNode extends Node = Node>(): ArraySelectionResult<SNode>;
   filter(cb: (context: BaseSelectionCallbackContext<TNode>) => boolean): ArraySelectionResult<TNode>;
@@ -38,8 +39,9 @@ export interface RootArraySelectionResult<TNode extends Node = Node>
 }
 
 export interface SingleSelectionResult<TNode extends Node = Node> extends BaseSelectionResult<TNode> {
-  parent<SNode extends Node = Node>(): SingleSelectionResult<SNode>;
+  readonly node: TNode;
   map<TResult>(cb: (context: BaseSelectionCallbackContext<TNode>) => TResult): TResult;
+  parent<SNode extends Node = Node>(): SingleSelectionResult<SNode>;
   filter(cb: (context: BaseSelectionCallbackContext<TNode>) => boolean): SingleSelectionResult<TNode>;
   readonly unique: SingleSelectionResult<TNode>;
   readonly first: SingleSelectionResult<TNode>;
@@ -59,6 +61,7 @@ export interface RootSingleSelectionResult<TNode extends Node = Node>
 export interface BaseSelectionCallbackContext<TNode extends Node = Node> {
   readonly node: TNode;
   readonly text: string;
+  query<SNode extends Node = Node>(queryStr: string): ArraySelectionResult<SNode>;
 }
 
 export interface ReplacementCallbackContext<TNode extends Node = Node> extends BaseSelectionCallbackContext<TNode> {}

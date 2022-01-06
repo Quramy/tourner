@@ -37,7 +37,7 @@ export class SourceFileDocument implements SourceDocument {
     this._uncommittedChanges = [];
   }
 
-  select<TNode extends Node = Node>(queryStr: string): RootArraySelectionResult<TNode> {
+  query<TNode extends Node = Node>(queryStr: string): RootArraySelectionResult<TNode> {
     const result = tsquery.query(this._sourceFile, queryStr);
     return new DefaultRootArraySelectionResult(result as TNode[], this);
   }
@@ -94,6 +94,10 @@ class DefaultArraySelectionResult<TNode extends Node> implements ArraySelectionR
   constructor(raw: TNode[], holder: SourceFileDocument) {
     this._raw = raw;
     this._holder = holder;
+  }
+
+  get node() {
+    return this._raw;
   }
 
   get length() {
@@ -180,6 +184,10 @@ class DefaultArraySelectionResult<TNode extends Node> implements ArraySelectionR
       return {
         node,
         text,
+        query: <SNode extends Node = Node>(queryString: string) => {
+          const raw = tsquery.query(node, queryString) as SNode[];
+          return new DefaultArraySelectionResult(raw, this._holder);
+        },
       };
     });
   }
@@ -248,6 +256,10 @@ class DefaultSingleSelectionResult<TNode extends Node> implements SingleSelectio
     this._holder = holder;
   }
 
+  get node() {
+    return this._raw;
+  }
+
   get length() {
     return 1;
   }
@@ -299,6 +311,10 @@ class DefaultSingleSelectionResult<TNode extends Node> implements SingleSelectio
     return {
       node,
       text,
+      query: <SNode extends Node = Node>(queryString: string) => {
+        const raw = tsquery.query(node, queryString) as SNode[];
+        return new DefaultArraySelectionResult(raw, this._holder);
+      },
     };
   }
 }

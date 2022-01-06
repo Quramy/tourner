@@ -125,7 +125,7 @@ describe(SourceFileDocument, () => {
       const result = SourceFileDocument.createFromSourceFile(
         getSourceFile(`const a = 1; const b = 'x' + 'y'; /* foo! */ const c = 3;`),
       )
-        .select<ts.VariableStatement>("VariableStatement:has(Identifier[name='b'])")
+        .query<ts.VariableStatement>("VariableStatement:has(Identifier[name='b'])")
         .unique.map(ctx => ctx.text);
 
       expect(result).toContain("const b = 'x' + 'y'");
@@ -135,7 +135,7 @@ describe(SourceFileDocument, () => {
       const result = SourceFileDocument.createFromSourceFile(
         getSourceFile(`const a = 1; const b = 'x' + 'y'; /* foo! */ const c = 3;`),
       )
-        .select<ts.VariableStatement>("VariableStatement")
+        .query<ts.VariableStatement>("VariableStatement")
         .filter(ctx => ts.isNumericLiteral(ctx.node.declarationList.declarations[0].initializer!)).length;
 
       expect(result).toBe(2);
@@ -145,10 +145,10 @@ describe(SourceFileDocument, () => {
       const result = SourceFileDocument.createFromSourceFile(
         getSourceFile(`const a = 1; const b = 'x' + 'y'; /* foo! */ const c = 3;`),
       )
-        .select<ts.VariableStatement>("VariableStatement:has(Identifier[name='b'])")
-        .replace(({ node }) =>
+        .query<ts.VariableStatement>("VariableStatement:has(Identifier[name='b'])")
+        .replace(({ query }) =>
           template.statement`export const b = INITIALIZER;`({
-            INITIALIZER: node.declarationList.declarations[0].initializer!,
+            INITIALIZER: query("*.initializer").first.node,
           }),
         )
         .end()
